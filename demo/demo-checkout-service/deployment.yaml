@@ -1,0 +1,50 @@
+# Minimal Deployment + Service for the game day exercise. Namespace
+# demo-gameday is assumed disposable -- create and delete it freely,
+# never reuse a real service's namespace for this.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo-gameday
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-checkout-service
+  namespace: demo-gameday
+  labels:
+    app: demo-checkout-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-checkout-service
+  template:
+    metadata:
+      labels:
+        app: demo-checkout-service
+    spec:
+      containers:
+        - name: demo-checkout-service
+          image: registry.acme.internal/demo/demo-checkout-service:gameday
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-checkout-service
+  namespace: demo-gameday
+  labels:
+    app: demo-checkout-service
+spec:
+  selector:
+    app: demo-checkout-service
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

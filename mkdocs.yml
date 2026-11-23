@@ -1,0 +1,67 @@
+site_name: obs-docs-runbooks
+site_description: Platformun canlı dokümantasyonu — runbook standardı, ADR'ler, onboarding rehberi, SLO sözlüğü.
+site_url: https://runbooks.acme.com/
+repo_url: https://github.com/acme/obs-docs-runbooks
+repo_name: acme/obs-docs-runbooks
+edit_uri: edit/main/
+
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - content.code.copy
+    - content.action.edit
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+plugins:
+  - search
+
+nav:
+  - Genel Bakış: index.md
+  - Sözlük (SLI/SLO/SLA): glossary.md
+  - Onboarding Rehberi: onboarding/onboarding-guide.md
+  - Game Day Checklist: game-day-checklist.md
+  - Şablonlar:
+      - Runbook şablonu: authoring-templates/runbook-template.md
+      - ADR şablonu: authoring-templates/adr-template.md
+  - Runbooks:
+      - http:
+          - Error Budget Burn (Fast): runbooks/http/error-budget-burn-fast.md
+          - Error Budget Burn (Slow): runbooks/http/error-budget-burn-slow.md
+          - Latency SLO Violation: runbooks/http/latency-slo-violation.md
+          - Saturation High: runbooks/http/saturation-high.md
+      - worker:
+          - Error Budget Burn (Fast): runbooks/worker/error-budget-burn-fast.md
+  - Architecture Decision Records:
+      - ADR-0001 Grafonnet: adr/0001-grafonnet-for-dashboard-templates.md
+      - ADR-0002 Thanos: adr/0002-thanos-for-long-term-metrics.md
+      - ADR-0003 Standalone Portal vs Backstage: adr/0003-standalone-portal-vs-backstage.md
+      - ADR-0004 CLI exec vs library import: adr/0004-cli-exec-over-library-import.md
+      - ADR-0005 Polling vs WebSocket: adr/0005-polling-over-websocket.md
+      - ADR-0006 MkDocs vs Docusaurus: adr/0006-mkdocs-over-docusaurus.md

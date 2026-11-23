@@ -1,0 +1,57 @@
+name: publish
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python3 scripts/lint_runbooks.py
+      - run: mkdocs build --strict
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+  # See redirects/README.md: GitHub Pages serves static files only, so the
+  # {ServiceName}{AlertType} -> canonical-page redirect this repo's URL
+  # convention needs is deployed separately, in front of Pages. Wire your
+  # own CLOUDFLARE_API_TOKEN/CLOUDFLARE_ACCOUNT_ID secrets to enable this
+  # job; it is a no-op (skipped) without them.
+  deploy-redirect-worker:
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: ${{ vars.CLOUDFLARE_ACCOUNT_ID != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: redirects
+          command: deploy cloudflare-worker.js --name obs-docs-runbooks-redirects --compatibility-date 2026-01-01

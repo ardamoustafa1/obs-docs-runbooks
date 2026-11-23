@@ -1,0 +1,63 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: lint mandatory runbook/ADR sections
+        run: python3 scripts/lint_runbooks.py
+      - name: build site (strict: warnings fail the build)
+        run: mkdocs build --strict
+      - name: test the redirect resolver
+        run: node redirects/test-resolve.mjs
+
+  demo-fixture:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout obs-docs-runbooks
+        uses: actions/checkout@v4
+        with:
+          path: obs-docs-runbooks
+      # demo-checkout-service depends on obs-instrumentation-sdk/go via a
+      # local replace directive (see demo/demo-checkout-service/go.mod),
+      # same cross-repo pattern as obs-onboarding-controller's own tests.
+      - name: checkout obs-instrumentation-sdk
+        uses: actions/checkout@v4
+        with:
+          repository: ardamoustafa1/obs-instrumentation-sdk
+          path: obs-instrumentation-sdk
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - name: build and vet the game day fixture
+        working-directory: obs-docs-runbooks/demo/demo-checkout-service
+        run: |
+          go build ./...
+          go vet ./...
+      - name: smoke test the fixture (build, run, curl, check metric names)
+        working-directory: obs-docs-runbooks/demo/demo-checkout-service
+        run: |
+          go build -o /tmp/demo-checkout-service .
+          /tmp/demo-checkout-service &
+          sleep 1
+          curl -sf -X POST localhost:8080/checkout | grep -q '"status":"ok"'
+          curl -sf -X POST localhost:8080/admin/failure-rate -d '{"rate":1.0}'
+          curl -s -o /dev/null -w '%{http_code}' -X POST localhost:8080/checkout | grep -q 500
+          curl -s localhost:8080/metrics | grep -q 'http_server_requests_total'
+          curl -s localhost:8080/metrics | grep -q 'http_server_request_errors_total'
+      - name: validate observability.yaml against obs-manifest-schema
+        run: |
+          git clone --depth 1 https://github.com/ardamoustafa1/obs-manifest-schema
+          cd obs-manifest-schema
+          go run ./cmd/obsctl validate --warnings-as-errors \
+            ../obs-docs-runbooks/demo/demo-checkout-service/observability.yaml

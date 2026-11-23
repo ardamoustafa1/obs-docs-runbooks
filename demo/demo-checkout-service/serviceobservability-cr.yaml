@@ -1,0 +1,48 @@
+# The Kubernetes-native ServiceObservability CR obs-onboarding-controller
+# actually reconciles. `observability.yaml` (obs-manifest-schema) is what
+# lives in the service repo and what CI lints; this CR is what gets
+# `kubectl apply`'d to the cluster once that PR merges (see
+# ../../docs/game-day-checklist.md step 2). It carries the same fields as
+# observability.yaml, translated into the CRD's camelCase/typed shape
+# (obsctl or a CI step can synthesize this automatically -- written by
+# hand here since this is a one-off game day fixture, not a real service's
+# pipeline).
+#
+# scrapeConfig has no counterpart in observability.yaml: it's a
+# Kubernetes-only extension (see obs-onboarding-controller/api/v1), since
+# "which Service/label selector to scrape" is a cluster-topology detail
+# obs-manifest-schema deliberately does not model.
+apiVersion: obs.acme.com/v1
+kind: ServiceObservability
+metadata:
+  name: demo-checkout-service
+  namespace: demo-gameday
+spec:
+  serviceType: http
+  environment: dev
+  slo:
+    availabilityTarget: 0.999
+    latencyTargetMs: 300
+    latencyPercentile: 99
+  goldenSignals:
+    trafficMetric: http_server_requests_total
+    errorMetric: http_server_request_errors_total
+    latencyMetric: http_server_request_duration_seconds
+    saturationMetrics:
+      - cpu_utilization_ratio
+      - memory_utilization_ratio
+  dashboards:
+    template: http-service-v2
+  alerting:
+    burnRateAlerts: true
+  ownership:
+    team: team-demo
+    slackChannel: "#demo-checkout-alerts"
+    pagerDutyService: demo-checkout-gameday
+  scrapeConfig:
+    selector:
+      matchLabels:
+        app: demo-checkout-service
+    port: http
+    path: /metrics
+    interval: 15s
